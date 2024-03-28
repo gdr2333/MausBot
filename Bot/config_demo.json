@@ -1,0 +1,6 @@
+{
+  "AdminList": [ 114514 ],
+  "UseReverseLink": true,
+  "Address": "ws://localhost:1991",
+  "PluginAddress": [ "./plugins/*/" ]
+}

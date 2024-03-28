@@ -4,7 +4,7 @@ using EleCho.GoCqHttpSdk.Message;
 using EleCho.GoCqHttpSdk.Post;
 using MausBot.PluginInterface;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
+using System.Threading.Channels;
 using static MausBot.PluginInterface.ICommand;
 
 namespace MausBot;
@@ -19,17 +19,10 @@ public class Context : IContext, IEquatable<Context>, IComparable<Context>
 
     public bool IsActive { get; set; } = true;
 
-    public async Task<CqMessagePostContext> ReadMessageAsync()
-    {
-        CqMessagePostContext res;
-        while (!MessageQueue.TryDequeue(out res) || IsActive)
-            await Task.Delay(10);
-        if (!IsActive)
-            throw new InvalidOperationException("尝试在停用的上下文中读取信息");
-        return res;
-    }
+    public async Task<CqMessagePostContext> ReadMessageAsync() =>
+        await MessageQueue.Reader.ReadAsync();
 
-    public async Task<CqSendMessageActionResult> SendMessageAsync(CqMessage message)
+    public async Task<CqSendMessageActionResult?> SendMessageAsync(CqMessage message)
     {
         CqSendMessageActionResult? r = null;
         if (GroupId == -1)
@@ -56,7 +49,7 @@ public class Context : IContext, IEquatable<Context>, IComparable<Context>
     public bool Equals(IContext? other) =>
         BotUid == other?.BotUid && SenderUid == other?.SenderUid && GroupId == other?.GroupId;
 
-    public required ConcurrentQueue<CqMessagePostContext> MessageQueue { get; init; }
+    public required Channel<CqMessagePostContext> MessageQueue { get; init; }
 
     public required ContextScope Scope { get; init; }
 
@@ -79,15 +72,18 @@ public class ContextManager : ICommand<CqMessagePostContext>
 
     public async Task Handler(CqMessagePostContext message, ICqActionSession session)
     {
+        Context? con = null;
         lock (contexts)
         {
             foreach (var context in contexts)
                 if (context.IsActive && Match(message, context))
-                {
-                    context.MessageQueue.Enqueue(message);
-                    Logger.LogInformation($"已经为消息{message}找到了活跃的上下文{context.ToInfoStr()}并将消息发送到消息队列。");
-                    return;
-                }
+                    con = context;
+        }
+        if (con != null)
+        {
+            await con.MessageQueue.Writer.WriteAsync(message);
+            Logger.LogInformation($"已经为消息{message}找到了活跃的上下文{con.ToInfoStr()}并将消息发送到消息队列。");
+            return;
         }
         foreach (var command in commands)
         {
@@ -104,7 +100,7 @@ public class ContextManager : ICommand<CqMessagePostContext>
                         Session = (ICqActionSession)message.Session,
                         Scope = command.Scope,
                         Priority = command.Scope == ContextScope.SameGroup ? -1 : 0,
-                        MessageQueue = new([message])
+                        MessageQueue = Channel.CreateUnbounded<CqMessagePostContext>()
                     };
                 else if (message is CqPrivateMessagePostContext privateMessage)
                     context = new()
@@ -116,10 +112,11 @@ public class ContextManager : ICommand<CqMessagePostContext>
                         Session = (ICqActionSession)message.Session,
                         Scope = command.Scope,
                         Priority = command.Scope == ContextScope.SameGroup ? -1 : 0,
-                        MessageQueue = new([message])
+                        MessageQueue = Channel.CreateUnbounded<CqMessagePostContext>()
                     };
                 if (context != null)
                 {
+                    await context.MessageQueue.Writer.WriteAsync(message);
                     Logger.LogInformation($"已经因消息 {message} 对指令 {command.Name} 创建了一个上下文 {context.ToInfoStr()}");
                     lock (contexts)
                     {

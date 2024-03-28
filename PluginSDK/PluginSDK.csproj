@@ -4,6 +4,15 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageLicenseExpression>GPL-3.0+</PackageLicenseExpression>
+    <Version>0.0.1</Version>
+    <Authors>df1050</Authors>
+    <Company />
+    <Product>MausBot</Product>
+    <PackageProjectUrl>https://github.com/gdr2333/MausBot</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/gdr2333/MausBot</RepositoryUrl>
+    <PackageId>MausBot.PluginSDK</PackageId>
   </PropertyGroup>
 
   <ItemGroup>

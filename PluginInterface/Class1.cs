@@ -34,7 +34,7 @@ public interface IContext : IEquatable<IContext>
     /// </summary>
     /// <param name="message">要发送的消息</param>
     /// <exception cref="InvalidOperationException">在停用的上下文中调用</exception>
-    public Task<CqSendMessageActionResult> SendMessageAsync(CqMessage message);
+    public Task<CqSendMessageActionResult?> SendMessageAsync(CqMessage message);
     /// <summary>
     /// 指示当前上下文是否为活跃状态。请注意：如果操作者发起了强制卸载上下文的请求，IsActive也会为false。
     /// </summary>
