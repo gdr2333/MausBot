@@ -5,4 +5,4 @@
 
 鸣谢：
 
-(https://github.com/OrgEleCho/EleCho.GoCqHttpSdk "SDK作者")
+SDK https://github.com/OrgEleCho/EleCho.GoCqHttpSdk
